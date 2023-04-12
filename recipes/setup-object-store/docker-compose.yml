@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  object-store-service:
+    image: quay.io/minio/minio
+    ports:
+      - 9000:9000
+      - 9001:9001
+    expose:
+      - 9000
+      - 9001
+    environment:
+      - MINIO_ROOT_USER=${OBJECT_STORE_USER}
+      - MINIO_ROOT_PASSWORD=${OBJECT_STORE_PASSWORD}
+    networks:
+      - net
+    command: server /data --console-address ":9001"
+  object-store-setup-service:
+    build:
+      context: .
+      dockerfile: docker/object-store-setup-service/Dockerfile
+    depends_on:
+      - object-store-service
+    volumes:
+      - ./docker/object-store-setup-service/setup.py:/init/setup.py
+      - ./data/sample.txt:/data/sample.txt
+    environment:
+      - OBJECT_STORE_ENDPOINT=${OBJECT_STORE_ENDPOINT}
+      - BUCKET=${BUCKET}
+      - AWS_ACCESS_KEY_ID=${OBJECT_STORE_USER}
+      - AWS_SECRET_ACCESS_KEY=${OBJECT_STORE_PASSWORD}
+    entrypoint: python /init/setup.py
+    networks:
+      - net
+
+networks:
+  net:
+    driver: bridge
+    name: net
